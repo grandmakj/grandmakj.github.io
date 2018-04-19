@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+    <meta charset='utf-8'>
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <meta name="description" content="Weevil Connect for We-Vibe">
+    <link rel="stylesheet" type="text/css" media="screen" href="stylesheets/material-icons.css">
+    <link rel="stylesheet" type="text/css" media="screen" href="stylesheets/materialize.min.css">
+    <link rel="stylesheet" type="text/css" media="screen" href="stylesheets/custom.css">
+
+    <script src="js/weevil.js" type="text/javascript"></script>
+
+    <title>Weevil Connect for We-Vibe</title>
+  </head>
+
+  <body>
+
+      <!-- HEADER -->
+      <header class="center-align">
+        <div class="container">
+          <img src="images/weevil.svg" class="logo"/>
+          <h1 id="project_title">Weevil Connect for We-Vibe</h1>
+          <h2 id="project_tagline"></h2>
+        </div>
+      </header>
+
+      <main>
+
+        <div class="container">
+        <!-- MAIN CONTENT -->
+        <div id="main_content_wrap" class="center-align">
+          <section id="main_content" class="main-actions">
+            <button id="btn_request_device" class="btn-large pink darken-1">
+              <i class="material-icons">&#xE335;</i>
+              Pair Device
+            </button>
+            <button id="btn_sync_pulse" class="btn-large pink darken-2">
+              <i class="material-icons">&#xE627;</i>
+              Sync Pulse
+            </button>
+            <button id="btn_read_data" class="btn-large pink darken-3">
+              <i class="material-icons">&#xE896;</i>
+              Read Data
+            </button>
+            <div id="info-wrapper" style="display:none;">
+              <p id="info"> </p>
+            </div>
+            <div>
+              <h2>Select mode</h2>
+              <select id="selectBox" class="btn dropdown-toggle pink darken-4" placeholder="Select mode" onchange="changePattern(value);">
+                <option value="0">None</option>
+                <option value="1">Vibrate1</option>
+                <option value="2">Vibrate2</option>
+                <option value="3">Vibrate3</option>
+                <option value="4">Pulse</option>
+                <option value="5">Rapid Pulse</option>
+                <option value="6">Echo</option>
+                <option value="7">Wave</option>
+                <option value="8">Tide</option>
+                <option value="9">Chachacha</option>
+              </select>
+            </div>
+          </section>
+        </div>
+      <script>
+
+        var weVibe = new WeVibe();
+
+        document.querySelector('#btn_request_device').addEventListener('click', function() {
+          if (!navigator.bluetooth) {
+            alert("No Bluetooth. :(");
+            return;
+          }
+
+          // TODO: Deactive other buttons until this succeeds?
+          weVibe.request();
+        });
+
+        document.querySelector('#btn_sync_pulse').addEventListener('click', function() {
+
+          weVibe.connect()
+          .then(_ => {return weVibe.writeCommand(new Uint8Array([30, 32, 45, 0, 0, 0, 0, 0]));})
+          //.then(_ => weVibe.disconnect())
+          .catch(error => { console.log(error) });
+        });
+
+        document.querySelector('#btn_read_data').addEventListener('click', function() {
+
+          weVibe.connect()
+          .then(_ => {return weVibe.writeCommand(new Uint8Array([15, 255, 0, 100, 0, 0, 0, 0]))})
+          .then(_ => {return weVibe.readInfo()})
+          .then(result => {displayInfo(result)})
+          //.then(_ => weVibe.disconnect())
+          .catch(error => { console.log(error) });
+
+        });
+
+
+       function displayInfo(readInfoResponse) {
+	 var deviceStatus = readInfoResponse;
+
+	 var mode = deviceStatus.getUint8(1) & 0xf;
+	 var temp = Math.round((deviceStatus.getUint8(5)-32)*5/9);
+
+	 var j = (deviceStatus.getUint8(3) << 8) + deviceStatus.getUint8(2) & 0xffff;
+         var i = j;
+         if (j < 0) {
+           i = 0x10000 + j;
+         }
+	 var battery = Math.round((i / 65535) * 100);
+
+	 var model = "unknown";
+	 if (deviceStatus.getUint8(7) == 69) {
+	   model = "We-Vibe 4+";
+	 }
+
+         var extIntensity = deviceStatus.getUint8(6)  >> 4 & 0xf;
+	 var intIntensity = deviceStatus.getUint8(6) & 0xf;
+
+         document.getElementById('info-wrapper').style.display = ""
+         document.getElementById('info').innerHTML = "<h3><span>Temperature: " + temp + "&deg;C</span></h3><h3><span>Battery: " + battery + "%</span></h3>";
+       }
+
+
+       function changePattern(command)  {
+	 weVibe.connect()
+               .then(_ => {return weVibe.writeCommand(new Uint8Array([15, command, null, 0, null, null, null, null]));})
+               //.then(_ => weVibe.disconnect())
+               .catch(error => { console.log(error) });
+       }
+
+        </script>
+
+      </div>
+
+    </main>
+    <footer class="page-footer">
+      <div class="container">
+	<h2><a href="https://github.com/privateplayaccord/weevil/blob/gh-pages/connect/README.md">Learn how to use Weevil Connect</a></h2>
+      </div>
+    </footer>
+
+  </body>
+</html>
